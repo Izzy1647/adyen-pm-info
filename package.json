@@ -1,0 +1,9 @@
+{
+  "name": "adyen-pm-info-site",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Auto-updated Adyen payment method settlement info dashboard",
+  "scripts": {
+    "build": "node scripts/build.js"
+  }
+}

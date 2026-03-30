@@ -1,0 +1,7 @@
+[build]
+  command = "node scripts/build.js"
+  publish = "public"
+
+# Scheduled daily rebuild at 6:00 AM UTC
+[build.environment]
+  NODE_VERSION = "18"
