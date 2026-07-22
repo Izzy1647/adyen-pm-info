@@ -35,8 +35,10 @@ const rows = parseCSV(csvContent);
 const headers = rows[0];
 const data = rows.slice(1);
 
-// Columns: 0=Payment Method, 1=Slug, 2=Settlement currency, 3=Processing currency, 4=Settlement delay, 5=Sales day payout
-const displayCols = [0, 2, 3, 4, 5];
+const EXCLUDE_COLS = new Set(["Slug"]);
+const YES_NO_COLS = new Set(["Sales day payout", "Refunds", "Partial refunds", "Multiple partial refunds", "Multiple partial captures", "3D Secure", "Chargebacks", "Local entity required", "Recurring"]);
+const DELAY_COL = "Settlement delay";
+const displayCols = headers.map((h, i) => i).filter((i) => !EXCLUDE_COLS.has(headers[i]));
 
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -64,9 +66,10 @@ const tableRows = data
   .map((row, idx) => {
     const cells = displayCols
       .map((ci) => {
+        const colName = headers[ci];
         const val = row[ci] || "";
-        if (ci === 4) return `<td class="${delayClass(val)}">${escapeHtml(val)}</td>`;
-        if (ci === 5) return `<td>${payoutBadge(val)}</td>`;
+        if (colName === DELAY_COL) return `<td class="${delayClass(val)}">${escapeHtml(val)}</td>`;
+        if (YES_NO_COLS.has(colName)) return `<td>${payoutBadge(val)}</td>`;
         return `<td>${escapeHtml(val)}</td>`;
       })
       .join("");
@@ -76,6 +79,16 @@ const tableRows = data
   .join("\n");
 
 const displayHeaders = displayCols.map((ci) => headers[ci]);
+
+const filterRow = displayCols
+  .map((ci, fi) => {
+    const colName = headers[ci];
+    if (YES_NO_COLS.has(colName)) {
+      return `<th><select class="filter-select" data-col="${fi}"><option value="">All</option><option value="Yes">Yes</option><option value="No">No</option><option value="N/A">N/A</option></select></th>`;
+    }
+    return `<th><input class="filter-input" type="text" placeholder="Filter..." data-col="${fi}"></th>`;
+  })
+  .join("");
 const buildDate = new Date().toISOString().split("T")[0];
 
 const html = `<!DOCTYPE html>
@@ -235,13 +248,7 @@ const html = `<!DOCTYPE html>
   <table>
     <thead>
       <tr>${displayHeaders.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr>
-      <tr class="filter-row">
-        <th><input class="filter-input" type="text" placeholder="Filter..." data-col="0"></th>
-        <th><input class="filter-input" type="text" placeholder="Filter currency..." data-col="1"></th>
-        <th><input class="filter-input" type="text" placeholder="Filter currency..." data-col="2"></th>
-        <th><input class="filter-input" type="text" placeholder="Filter delay..." data-col="3"></th>
-        <th><select class="filter-select" data-col="4"><option value="">All</option><option value="Yes">Yes</option><option value="No">No</option><option value="N/A">N/A</option></select></th>
-      </tr>
+      <tr class="filter-row">${filterRow}</tr>
     </thead>
     <tbody>
 ${tableRows}

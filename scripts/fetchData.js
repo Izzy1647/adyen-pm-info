@@ -11,6 +11,18 @@ const FIELDS_TO_EXTRACT = [
   "Settlement delay",
 ];
 
+const ICON_FIELDS = [
+  "Refunds",
+  "Partial refunds",
+  "Multiple partial refunds",
+  "Multiple partial captures",
+  "3D Secure",
+  "Chargebacks",
+  "Local entity required",
+  "Sales day payout",
+  "Recurring",
+];
+
 function fetchPage(url) {
   return new Promise((resolve, reject) => {
     https
@@ -47,10 +59,16 @@ async function discoverSlugs() {
   return slugs;
 }
 
+function getTableSection(html) {
+  const idx = html.indexOf("features__table");
+  return idx !== -1 ? html.substring(idx) : html;
+}
+
 function extractField(html, fieldName) {
-  const labelIdx = html.toLowerCase().indexOf(fieldName.toLowerCase());
+  const section = getTableSection(html);
+  const labelIdx = section.toLowerCase().indexOf(fieldName.toLowerCase());
   if (labelIdx === -1) return "N/A";
-  const afterLabel = html.substring(labelIdx, labelIdx + 1000);
+  const afterLabel = section.substring(labelIdx, labelIdx + 1000);
   const valueCellMatch = afterLabel.match(
     /<\/div>[\s\S]*?<div[^>]*features__table__col-td[^>]*>([\s\S]*?)<\/div>/i
   );
@@ -66,10 +84,11 @@ function extractField(html, fieldName) {
   return spanTexts.length > 0 ? spanTexts.join("; ") : "N/A";
 }
 
-function extractSalesDayPayout(html) {
-  const labelIdx = html.toLowerCase().indexOf("sales day payout");
+function extractIconField(html, fieldName) {
+  const section = getTableSection(html);
+  const labelIdx = section.toLowerCase().indexOf(fieldName.toLowerCase());
   if (labelIdx === -1) return "N/A";
-  const afterLabel = html.substring(labelIdx, labelIdx + 2000);
+  const afterLabel = section.substring(labelIdx, labelIdx + 5000);
   const svgMatch = afterLabel.match(/aria-label="([^"]+)"/i);
   if (!svgMatch) return "N/A";
   const ariaLabel = svgMatch[1].toLowerCase();
@@ -104,14 +123,15 @@ async function processSlug(slug) {
       result[field] = extractField(html, field);
     }
     result["Settlement delay"] = normalizeDelay(result["Settlement delay"]);
-    result["Sales day payout"] = extractSalesDayPayout(html);
+    for (const field of ICON_FIELDS) {
+      result[field] = extractIconField(html, field);
+    }
     return result;
   } catch (err) {
-    return {
-      "Payment Method": slug, Slug: slug,
-      "Settlement currency": `Error: ${err.message}`,
-      "Processing currency": "", "Settlement delay": "", "Sales day payout": "",
-    };
+    const result = { "Payment Method": slug, Slug: slug };
+    for (const field of FIELDS_TO_EXTRACT) result[field] = field === "Settlement currency" ? `Error: ${err.message}` : "";
+    for (const field of ICON_FIELDS) result[field] = "";
+    return result;
   }
 }
 
