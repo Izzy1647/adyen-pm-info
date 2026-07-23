@@ -36,6 +36,7 @@ const headers = rows[0];
 const data = rows.slice(1);
 
 const EXCLUDE_COLS = new Set(["Slug", "Settlement currency"]);
+const slugIdx = headers.indexOf("Slug");
 const YES_NO_COLS = new Set(["Sales day payout", "Refunds", "Partial refunds", "Multiple partial refunds", "Multiple partial captures", "3D Secure", "Chargebacks", "Local entity required", "Recurring"]);
 const DELAY_COL = "Settlement delay";
 const displayCols = headers.map((h, i) => i).filter((i) => !EXCLUDE_COLS.has(headers[i]));
@@ -68,6 +69,11 @@ const tableRows = data
       .map((ci) => {
         const colName = headers[ci];
         const val = row[ci] || "";
+        if (colName === "Payment Method") {
+          const slug = row[slugIdx] || "";
+          const href = `https://www.adyen.com/payment-methods/${slug}`;
+          return `<td><a class="pm-link" href="${href}" target="_blank" rel="noopener">${escapeHtml(val)}</a></td>`;
+        }
         if (colName === DELAY_COL) return `<td class="${delayClass(val)}">${escapeHtml(val)}</td>`;
         if (YES_NO_COLS.has(colName)) return `<td>${payoutBadge(val)}</td>`;
         return `<td>${escapeHtml(val)}</td>`;
@@ -84,7 +90,7 @@ const filterRow = displayCols
   .map((ci, fi) => {
     const colName = headers[ci];
     if (YES_NO_COLS.has(colName)) {
-      return `<th><select class="filter-select" data-col="${fi}"><option value="">All</option><option value="Yes">Yes</option><option value="No">No</option><option value="N/A">N/A</option></select></th>`;
+      return `<th><div class="multi-filter" data-col="${fi}"><label class="mf-label"><input type="checkbox" value="Yes"> Yes</label><label class="mf-label"><input type="checkbox" value="No"> No</label><label class="mf-label"><input type="checkbox" value="N/A"> N/A</label></div></th>`;
     }
     return `<th><input class="filter-input" type="text" placeholder="Filter..." data-col="${fi}"></th>`;
   })
@@ -151,18 +157,28 @@ const html = `<!DOCTYPE html>
   }
   .filter-input::placeholder { color: #999; }
   .filter-input:focus { border-color: #0abf53; }
-  .filter-select {
-    width: 100%;
-    padding: 6px 10px;
-    border: 1px solid #555;
-    border-radius: 6px;
-    background: #3a3a4e;
-    color: #fff;
-    font-size: 11px;
-    outline: none;
-    cursor: pointer;
+  .multi-filter {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
   }
-  .filter-select:focus { border-color: #0abf53; }
+  .mf-label {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    color: #ccc;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .mf-label input[type=checkbox] {
+    accent-color: #0abf53;
+    cursor: pointer;
+    width: 13px;
+    height: 13px;
+  }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -236,6 +252,15 @@ const html = `<!DOCTYPE html>
   .dot-fast { background: #0abf53; }
   .dot-mid { background: #f5a623; }
   .dot-slow { background: #e74c3c; }
+  .pm-link {
+    color: #1a1a2e;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .pm-link:hover {
+    color: #0abf53;
+    text-decoration: underline;
+  }
 </style>
 </head>
 <body>
@@ -264,25 +289,33 @@ ${tableRows}
 </div>
 <script>
   const inputs = document.querySelectorAll('.filter-input');
-  const selects = document.querySelectorAll('.filter-select');
+  const multiFilters = document.querySelectorAll('.multi-filter');
   const rows = document.querySelectorAll('tbody tr');
 
   function applyFilters() {
-    const filters = {};
-    inputs.forEach(input => { filters[input.dataset.col] = input.value.toLowerCase(); });
-    selects.forEach(sel => { filters[sel.dataset.col] = sel.value; });
+    const textFilters = {};
+    const multiFilterValues = {};
+    inputs.forEach(input => { textFilters[input.dataset.col] = input.value.toLowerCase(); });
+    multiFilters.forEach(mf => {
+      const col = mf.dataset.col;
+      const checked = Array.from(mf.querySelectorAll('input[type=checkbox]:checked')).map(cb => cb.value);
+      multiFilterValues[col] = checked.length === 0 ? null : checked;
+    });
 
     let visible = 0;
     rows.forEach((row) => {
       const cells = row.querySelectorAll('td');
       let show = true;
-      for (const [col, val] of Object.entries(filters)) {
+      for (const [col, val] of Object.entries(textFilters)) {
         if (!val) continue;
         const cellText = cells[parseInt(col)]?.textContent?.toLowerCase() || '';
-        if (col === '4') {
-          if (cellText.trim() !== val.toLowerCase()) { show = false; break; }
-        } else {
-          if (!cellText.includes(val)) { show = false; break; }
+        if (!cellText.includes(val)) { show = false; break; }
+      }
+      if (show) {
+        for (const [col, vals] of Object.entries(multiFilterValues)) {
+          if (!vals) continue;
+          const cellText = cells[parseInt(col)]?.textContent?.trim() || '';
+          if (!vals.includes(cellText)) { show = false; break; }
         }
       }
       row.style.display = show ? '' : 'none';
@@ -294,7 +327,7 @@ ${tableRows}
   }
 
   inputs.forEach(input => input.addEventListener('input', applyFilters));
-  selects.forEach(sel => sel.addEventListener('change', applyFilters));
+  multiFilters.forEach(mf => mf.addEventListener('change', applyFilters));
 </script>
 </body>
 </html>`;
