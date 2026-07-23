@@ -35,7 +35,7 @@ const rows = parseCSV(csvContent);
 const headers = rows[0];
 const data = rows.slice(1);
 
-const EXCLUDE_COLS = new Set(["Slug"]);
+const EXCLUDE_COLS = new Set(["Slug", "Settlement currency"]);
 const YES_NO_COLS = new Set(["Sales day payout", "Refunds", "Partial refunds", "Multiple partial refunds", "Multiple partial captures", "3D Secure", "Chargebacks", "Local entity required", "Recurring"]);
 const DELAY_COL = "Settlement delay";
 const displayCols = headers.map((h, i) => i).filter((i) => !EXCLUDE_COLS.has(headers[i]));
@@ -96,7 +96,7 @@ const html = `<!DOCTYPE html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Adyen Payment Methods — Settlement Info</title>
+<title>Adyen payment methods - all you need to know</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -112,6 +112,10 @@ const html = `<!DOCTYPE html>
     border-radius: 16px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.08);
     overflow: hidden;
+  }
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   .header {
     background: linear-gradient(135deg, #0abf53 0%, #00a651 100%);
@@ -237,14 +241,15 @@ const html = `<!DOCTYPE html>
 <body>
 <div class="container">
   <div class="header">
-    <h1>Adyen Payment Methods — Settlement Info</h1>
-    <p>Settlement currency, processing currency, and settlement delay for all ${data.length} supported payment methods &middot; Auto-updated daily</p>
+    <h1>Adyen payment methods - all you need to know</h1>
+    <p>Processing currency, settlement delay, and feature support for all ${data.length} supported payment methods &middot; Auto-updated daily</p>
   </div>
   <div class="legend">
     <span><span class="dot dot-fast"></span> 1-2 days</span>
     <span><span class="dot dot-mid"></span> 3-5 days</span>
     <span><span class="dot dot-slow"></span> 6+ days</span>
   </div>
+  <div class="table-wrap">
   <table>
     <thead>
       <tr>${displayHeaders.map((h) => `<th>${escapeHtml(h)}</th>`).join("")}</tr>
@@ -254,6 +259,7 @@ const html = `<!DOCTYPE html>
 ${tableRows}
     </tbody>
   </table>
+  </div>
   <div class="footer">Source: adyen.com/payment-methods &middot; Last updated: ${buildDate}</div>
 </div>
 <script>
