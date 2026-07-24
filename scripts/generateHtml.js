@@ -261,6 +261,30 @@ const html = `<!DOCTYPE html>
     color: #0abf53;
     text-decoration: underline;
   }
+  .toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px 40px;
+    border-top: 1px solid #f0f0f0;
+    background: #fafbfc;
+  }
+  .export-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 16px;
+    background: #1a1a2e;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .export-btn:hover { background: #0abf53; }
+  .export-btn svg { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -273,6 +297,12 @@ const html = `<!DOCTYPE html>
     <span><span class="dot dot-fast"></span> 1-2 days</span>
     <span><span class="dot dot-mid"></span> 3-5 days</span>
     <span><span class="dot dot-slow"></span> 6+ days</span>
+  </div>
+  <div class="toolbar">
+    <button class="export-btn" onclick="exportCSV()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
   </div>
   <div class="table-wrap">
   <table>
@@ -328,6 +358,25 @@ ${tableRows}
 
   inputs.forEach(input => input.addEventListener('input', applyFilters));
   multiFilters.forEach(mf => mf.addEventListener('change', applyFilters));
+
+  function exportCSV() {
+    const headers = Array.from(document.querySelectorAll('thead tr:first-child th')).map(th => th.textContent.trim());
+    const visibleRows = Array.from(document.querySelectorAll('tbody tr')).filter(r => r.style.display !== 'none');
+    const csvLines = [headers.map(h => '"' + h.replace(/"/g, '""') + '"').join(',')];
+    visibleRows.forEach(row => {
+      const cells = Array.from(row.querySelectorAll('td')).map(td => '"' + td.textContent.trim().replace(/"/g, '""') + '"');
+      csvLines.push(cells.join(','));
+    });
+    const blob = new Blob([csvLines.join('\\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'adyen-payment-methods.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 </script>
 </body>
 </html>`;
